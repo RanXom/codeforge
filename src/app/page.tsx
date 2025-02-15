@@ -1,13 +1,10 @@
 import React from 'react'
 
-const page = () => {
+export default function Home() {
   return (
-    <div className='flex justify-center items-center min-h-screen'>
-      <div className='bg-slate-800 p-8 '>
-        page
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <h1 className="text-4xl font-bold">Welcome to CodeForge</h1>
+      <p className="mt-4 text-lg">A distraction-free coding platform.</p>
     </div>
-  )
+  );
 }
-
-export default page
