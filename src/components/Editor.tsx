@@ -1,25 +1,33 @@
 'use client';
 
-import React, { useState } from "react";
-import MonacoEditor from "react-monaco-editor";
+import React, { useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 
-const Editor = () => {
-    const [code, setCode] = useState('// Write your code here');
+// Dynamically import MonacoEditor with SSR disabled
+const MonacoEditor = dynamic(() => import('react-monaco-editor'), { ssr: false });
 
-    const handleEditorChange = (newValue: string) => {
-        setCode(newValue);
-    };
+const Editor = ({ code, onChange, language = 'javascript' }) => {
+  const handleEditorChange = (newValue) => {
+    onChange(newValue);
+  };
 
-    return (
-        <MonacoEditor
-            width="100%"
-            height="500px"
-            language="javascript"
-            theme="vs-dark"
-            value={code}
-            onChange={handleEditorChange}
-        />
-    );
+  return (
+    <MonacoEditor
+      width="100%"
+      height="500px"
+      language={language}
+      theme="vs-dark"
+      value={code}
+      onChange={handleEditorChange}
+    />
+  );
 };
 
-export default Editor;
+// Wrap the Editor in a Suspense component for lazy loading
+const LazyEditor = (props) => (
+  <Suspense fallback={<div>Loading editor...</div>}>
+    <Editor {...props} />
+  </Suspense>
+);
+
+export default LazyEditor;

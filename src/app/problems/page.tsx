@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { supabase } from '../../lib/supabase';
 
 export default function Problems() {
   const [problems, setProblems] = useState([]);
@@ -25,7 +25,7 @@ export default function Problems() {
             <Link href={`/problems/${problem.slug}`}>
               <h2 className="text-xl font-semibold">{problem.title}</h2>
               <div className="mt-2">
-                <span className="text-sm text-blue-500 font-medium">
+                <span className="bg-green-800 text-sm text-gray-300 font-medium p-1 rounded-sm">
                   {problem.difficulty}
                 </span>
                 <span className="ml-2 text-sm text-gray-500">

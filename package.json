@@ -9,14 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/supabase-js": "^2.48.1",
+    "@tailwindcss/typography": "^0.5.16",
     "axios": "^1.7.9",
+    "github-markdown-css": "^5.8.1",
     "monaco-editor": "^0.52.2",
     "next": "15.1.7",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-monaco-editor": "^0.58.0"
+    "react-markdown": "^9.0.3",
+    "react-monaco-editor": "^0.58.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
