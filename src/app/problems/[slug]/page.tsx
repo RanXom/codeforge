@@ -13,25 +13,24 @@ export default function ProblemPage({ params }) {
   const [problem, setProblem] = useState(null);
   const [code, setCode] = useState('// Write your code here');
   const [language, setLanguage] = useState('python');
+  const [user, setUser] = useState(null); // ✅ Manually set user state
   const router = useRouter();
-  const user = useUser(); // Get the current user
-
-  // Debugging: Check user object
+  
   useEffect(() => {
-    console.log('User:', user);
-  }, [user]);
-
-  // Force session refresh
-  useEffect(() => {
-    const getSession = async () => {
+    const fetchSession = async () => {
       const { data, error } = await supabase.auth.getSession();
-      if (error) console.error(error);
-      else console.log('Session:', data.session);
+      if (error) {
+        console.error('Session Error:', error);
+      } else {
+        console.log('Session:', data.session);
+        setUser(data.session?.user || null); // ✅ Ensure user is properly set
+      }
     };
-    getSession();
-  }, [supabase]);
+    fetchSession();
+  }, []);
 
-  // Correct slug extraction
+  console.log('User:', user); // ✅ Debugging
+
   const slug = React.use(params).slug;
 
   useEffect(() => {

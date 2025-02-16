@@ -1,25 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { useEffect } from 'react';
 
 export default function Navbar() {
-  const supabase = useSupabaseClient();
-  const user = useUser();
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) console.error(error);
-      else console.log('Session:', data.session);
-    };
-    getSession();
-  }, [supabase]);
+  const supabase = useSupabaseClient(); // ✅ Using Supabase client from auth-helpers
+  const user = useUser(); // ✅ Automatically tracks user session
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error(error);
-    else alert('Logged out successfully!');
+    await supabase.auth.signOut();
+    alert('Logged out successfully!');
   };
 
   return (
