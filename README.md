@@ -93,7 +93,7 @@ This project is a **problem-solving coding platform** designed to provide a **di
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/coding-platform.git
+git clone https://github.com/RanXom/coding-platform.git
 cd coding-platform
 ```
 
