@@ -17,23 +17,16 @@ export default function ProblemPage({ params }) {
   const router = useRouter();
   
   useEffect(() => {
-    // Function to request fullscreen mode
     const requestFullscreen = () => {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen();
-      } else if (elem.mozRequestFullScreen) { // Firefox
-        elem.mozRequestFullScreen();
-      } else if (elem.webkitRequestFullscreen) { // Chrome, Safari
-        elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) { // IE/Edge
-        elem.msRequestFullscreen();
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error("Error entering fullscreen:", err);
+        });
       }
     };
   
     requestFullscreen();
   
-    // Prevent exiting fullscreen
     const enforceFullscreen = () => {
       if (!document.fullscreenElement) {
         requestFullscreen();
@@ -42,10 +35,25 @@ export default function ProblemPage({ params }) {
   
     document.addEventListener("fullscreenchange", enforceFullscreen);
   
+    // Bypass fullscreen mode for development (Ctrl + Shift + X)
+    const bypassFullscreen = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "x") {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          alert("Fullscreen mode exited (bypass enabled).");
+        }
+      }
+    };
+  
+    document.addEventListener("keydown", bypassFullscreen);
+  
     return () => {
       document.removeEventListener("fullscreenchange", enforceFullscreen);
+      document.removeEventListener("keydown", bypassFullscreen);
     };
   }, []);
+  
+  
   
   useEffect(() => {
     // Disable right-click
