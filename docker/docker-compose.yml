@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+  judge0:
+    image: judge0/judge0:latest
+    volumes:
+      - ./judge0-config.yml:/judge0.yml:ro
+    ports:
+      - "2358:2358"
+    privileged: true
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - RAILS_ENV=production
+      - SECRET_KEY_BASE=your_secret_key_base
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=judge0
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=judge0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=redis
+      - INTERVAL=0.1
+      - CPU_TIME_LIMIT=15
+      - MAX_CPU_TIME_LIMIT=30
+      - ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=true
+      - ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=true
+      - VIRTUAL_MEMORY_LIMIT=512000
+      - STDIN_SIZE_LIMIT=10240
+      - STDOUT_SIZE_LIMIT=10240
+      - STDERR_SIZE_LIMIT=10240
+      - COMPILATION_TIME_LIMIT=20
+      - MAX_SUBMISSION_FILE_SIZE=10240
+      - RESTART=always
+      - NUMBER_OF_WORKERS=4
+    restart: always
+
+  postgres:
+    image: postgres:13.0
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=judge0
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=judge0
+    restart: always
+
+  redis:
+    image: redis:6.0
+    command: redis-server --requirepass redis
+    volumes:
+      - redis-data:/data
+    restart: always
+
+volumes:
+  postgres-data:
+  redis-data:
