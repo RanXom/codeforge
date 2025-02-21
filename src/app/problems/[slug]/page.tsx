@@ -17,6 +17,72 @@ export default function ProblemPage({ params }) {
   const router = useRouter();
   
   useEffect(() => {
+    // Function to request fullscreen mode
+    const requestFullscreen = () => {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.mozRequestFullScreen) { // Firefox
+        elem.mozRequestFullScreen();
+      } else if (elem.webkitRequestFullscreen) { // Chrome, Safari
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) { // IE/Edge
+        elem.msRequestFullscreen();
+      }
+    };
+  
+    requestFullscreen();
+  
+    // Prevent exiting fullscreen
+    const enforceFullscreen = () => {
+      if (!document.fullscreenElement) {
+        requestFullscreen();
+      }
+    };
+  
+    document.addEventListener("fullscreenchange", enforceFullscreen);
+  
+    return () => {
+      document.removeEventListener("fullscreenchange", enforceFullscreen);
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Disable right-click
+    const disableContextMenu = (e) => e.preventDefault();
+    document.addEventListener("contextmenu", disableContextMenu);
+  
+    // Disable Copy-Paste & Select
+    const disableShortcuts = (e) => {
+      if (e.ctrlKey && ["c", "v", "x", "a"].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+      }
+    };
+  
+    document.addEventListener("keydown", disableShortcuts);
+  
+    return () => {
+      document.removeEventListener("contextmenu", disableContextMenu);
+      document.removeEventListener("keydown", disableShortcuts);
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Detect tab switching
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        alert("Tab switching is not allowed!");
+      }
+    };
+  
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchSession = async () => {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
