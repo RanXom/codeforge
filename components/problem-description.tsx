@@ -59,7 +59,11 @@ export function ProblemDescription({ id }: { id: string }) {
           <span>{problem.title}</span>
           <Badge
             variant={
-              problem.difficulty === "easy" ? "success" : problem.difficulty === "medium" ? "warning" : "destructive"
+              problem.difficulty === "easy"
+                ? "default"
+                : problem.difficulty === "medium"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {problem.difficulty}

@@ -23,13 +23,20 @@ export type TestCase = {
 export async function getProblem(id: string) {
   const supabase = createClientComponentClient<Database>()
   
+  console.log('Fetching problem with ID:', id)
+  
   const { data: problem, error: problemError } = await supabase
     .from('problems')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (problemError) throw problemError
+  if (problemError) {
+    console.error('Error fetching problem:', problemError)
+    throw problemError
+  }
+
+  console.log('Found problem:', problem)
 
   const { data: testCases, error: testCasesError } = await supabase
     .from('test_cases')
@@ -37,7 +44,12 @@ export async function getProblem(id: string) {
     .eq('problem_id', id)
     .eq('is_hidden', false)
 
-  if (testCasesError) throw testCasesError
+  if (testCasesError) {
+    console.error('Error fetching test cases:', testCasesError)
+    throw testCasesError
+  }
+
+  console.log('Found test cases:', testCases)
 
   return {
     problem,

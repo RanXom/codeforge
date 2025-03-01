@@ -1,51 +1,60 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Search } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-
-// Mock data for problems
-const mockProblems = [
-  {
-    id: 1,
-    title: "Two Sum",
-    difficulty: "Easy",
-    tags: ["Arrays", "Hash Table"],
-    solvedCount: 1245,
-  },
-  {
-    id: 2,
-    title: "Reverse Linked List",
-    difficulty: "Medium",
-    tags: ["Linked List", "Recursion"],
-    solvedCount: 987,
-  },
-  {
-    id: 3,
-    title: "Binary Tree Maximum Path Sum",
-    difficulty: "Hard",
-    tags: ["Binary Tree", "DFS"],
-    solvedCount: 456,
-  },
-]
+import { Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { getAllProblems, type Problem } from "@/lib/problems"
 
 export function ProblemList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
+  const [problems, setProblems] = useState<Problem[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchProblems = async () => {
+      try {
+        setLoading(true)
+        const data = await getAllProblems()
+        setProblems(data)
+      } catch (error) {
+        console.error('Error fetching problems:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load problems. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProblems()
+  }, [toast])
 
   // Filter problems based on search query and difficulty
-  const filteredProblems = mockProblems.filter((problem) => {
+  const filteredProblems = problems.filter((problem) => {
     const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDifficulty =
       difficultyFilter === "all" || problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase()
     return matchesSearch && matchesDifficulty
   })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -79,26 +88,21 @@ export function ProblemList() {
             <Card key={problem.id}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">{problem.title}</CardTitle>
-                <CardDescription>Solved by {problem.solvedCount} coders</CardDescription>
+                <CardDescription>Created {new Date(problem.created_at).toLocaleDateString()}</CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
                 <div className="flex flex-wrap gap-2">
                   <Badge
                     variant={
-                      problem.difficulty === "Easy"
-                        ? "success"
-                        : problem.difficulty === "Medium"
-                          ? "warning"
+                      problem.difficulty === "easy"
+                        ? "default"
+                        : problem.difficulty === "medium"
+                          ? "secondary"
                           : "destructive"
                     }
                   >
                     {problem.difficulty}
                   </Badge>
-                  {problem.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
                 </div>
               </CardContent>
               <CardFooter>
