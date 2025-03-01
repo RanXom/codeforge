@@ -1,94 +1,53 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2 } from "lucide-react"
-
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// Mock problem data
-const mockProblemData = {
-  "1": {
-    id: "1",
-    title: "Two Sum",
-    difficulty: "Easy",
-    tags: ["Arrays", "Hash Table"],
-    description: `
-      <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
-      <p>You may assume that each input would have exactly one solution, and you may not use the same element twice.</p>
-      <p>You can return the answer in any order.</p>
-    `,
-    examples: [
-      {
-        input: "nums = [2,7,11,15], target = 9",
-        output: "[0,1]",
-        explanation: "Because nums[0] + nums[1] == 9, we return [0, 1].",
-      },
-      {
-        input: "nums = [3,2,4], target = 6",
-        output: "[1,2]",
-        explanation: "Because nums[1] + nums[2] == 6, we return [1, 2].",
-      },
-    ],
-    constraints: [
-      "2 <= nums.length <= 10^4",
-      "-10^9 <= nums[i] <= 10^9",
-      "-10^9 <= target <= 10^9",
-      "Only one valid answer exists.",
-    ],
-    hints: [
-      "Try using a hash map to store the values you've seen so far.",
-      "For each element, check if target - current element exists in the hash map.",
-    ],
-  },
-  "2": {
-    id: "2",
-    title: "Reverse Linked List",
-    difficulty: "Medium",
-    tags: ["Linked List", "Recursion"],
-    description: `
-      <p>Given the <code>head</code> of a singly linked list, reverse the list, and return the reversed list.</p>
-    `,
-    examples: [
-      {
-        input: "head = [1,2,3,4,5]",
-        output: "[5,4,3,2,1]",
-      },
-      {
-        input: "head = [1,2]",
-        output: "[2,1]",
-      },
-    ],
-    constraints: ["The number of nodes in the list is the range [0, 5000].", "-5000 <= Node.val <= 5000"],
-    hints: [
-      "A linked list can be reversed either iteratively or recursively.",
-      "Try to visualize the reversal process by drawing it out.",
-    ],
-  },
-}
+import { Loader2 } from "lucide-react"
+import { getProblem, type Problem, type TestCase } from "@/lib/problems"
+import { useToast } from "@/components/ui/use-toast"
 
 export function ProblemDescription({ id }: { id: string }) {
   const [loading, setLoading] = useState(true)
-  const [problem, setProblem] = useState<any>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
+  const [testCases, setTestCases] = useState<TestCase[]>([])
+  const { toast } = useToast()
 
   useEffect(() => {
-    // Simulate API call to fetch problem data
     const fetchProblem = async () => {
-      setLoading(true)
-      // In a real app, you would fetch from an API
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      setProblem(mockProblemData[id] || mockProblemData["1"])
-      setLoading(false)
+      try {
+        setLoading(true)
+        const data = await getProblem(id)
+        setProblem(data.problem)
+        setTestCases(data.testCases)
+      } catch (error) {
+        console.error('Error fetching problem:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load problem details. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchProblem()
-  }, [id])
+  }, [id, toast])
 
   if (loading) {
     return (
       <Card className="min-h-[500px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    )
+  }
+
+  if (!problem) {
+    return (
+      <Card className="min-h-[500px] flex items-center justify-center">
+        <div className="text-center text-muted-foreground">Problem not found</div>
       </Card>
     )
   }
@@ -100,71 +59,42 @@ export function ProblemDescription({ id }: { id: string }) {
           <span>{problem.title}</span>
           <Badge
             variant={
-              problem.difficulty === "Easy" ? "success" : problem.difficulty === "Medium" ? "warning" : "destructive"
+              problem.difficulty === "easy" ? "success" : problem.difficulty === "medium" ? "warning" : "destructive"
             }
           >
             {problem.difficulty}
           </Badge>
         </CardTitle>
-        <CardDescription>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {problem.tags.map((tag: string) => (
-              <Badge key={tag} variant="outline">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="description">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="description">Description</TabsTrigger>
-            <TabsTrigger value="examples">Examples</TabsTrigger>
-            <TabsTrigger value="constraints">Constraints</TabsTrigger>
-            <TabsTrigger value="hints">Hints</TabsTrigger>
+            <TabsTrigger value="examples">Test Cases</TabsTrigger>
           </TabsList>
 
           <TabsContent value="description" className="mt-4">
-            <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+            </div>
           </TabsContent>
 
           <TabsContent value="examples" className="mt-4 space-y-4">
-            {problem.examples.map((example: any, index: number) => (
-              <div key={index} className="space-y-2 border rounded-md p-4">
+            {testCases.map((testCase) => (
+              <div key={testCase.id} className="space-y-2 border rounded-md p-4">
                 <div>
-                  <strong>Input:</strong> {example.input}
+                  <strong>Input:</strong> {testCase.input}
                 </div>
                 <div>
-                  <strong>Output:</strong> {example.output}
+                  <strong>Expected Output:</strong> {testCase.expected_output}
                 </div>
-                {example.explanation && (
-                  <div>
-                    <strong>Explanation:</strong> {example.explanation}
-                  </div>
-                )}
               </div>
             ))}
-          </TabsContent>
-
-          <TabsContent value="constraints" className="mt-4">
-            <ul className="list-disc pl-5 space-y-1">
-              {problem.constraints.map((constraint: string, index: number) => (
-                <li key={index}>{constraint}</li>
-              ))}
-            </ul>
-          </TabsContent>
-
-          <TabsContent value="hints" className="mt-4">
-            <ul className="list-disc pl-5 space-y-1">
-              {problem.hints.map((hint: string, index: number) => (
-                <li key={index}>{hint}</li>
-              ))}
-            </ul>
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
   )
 }
+
 

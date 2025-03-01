@@ -10,27 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase, type TestCase } from "@/lib/supabase"
+import { getProblem } from "@/lib/problems"
 
-// Mock language options
+// Language options
 const languages = [
   { value: "javascript", label: "JavaScript" },
   { value: "python", label: "Python" },
   { value: "java", label: "Java" },
   { value: "cpp", label: "C++" },
 ]
-
-/* Mock test cases - kept for reference
-const testCases = [
-  {
-    input: "nums = [2,7,11,15], target = 9",
-    expectedOutput: "[0,1]",
-  },
-  {
-    input: "nums = [3,2,4], target = 6",
-    expectedOutput: "[1,2]",
-  },
-]
-*/
 
 // Default code templates
 const codeTemplates = {
@@ -60,7 +48,7 @@ public:
 };`,
 }
 
-// Placeholder for Judge0 API functions - replace with actual implementation
+// Judge0 API configuration
 const languageIds = {
   javascript: 63,
   python: 71,
@@ -108,16 +96,7 @@ export function CodeEditor({ problemId }: { problemId: string }) {
   useEffect(() => {
     const fetchTestCases = async () => {
       try {
-        const { data: testCases, error } = await supabase
-          .from('test_cases')
-          .select('*')
-          .eq('problem_id', problemId)
-          .eq('is_hidden', false)
-
-        if (error) {
-          throw error
-        }
-
+        const { testCases } = await getProblem(problemId)
         setTestCases(testCases)
       } catch (error) {
         console.error('Error fetching test cases:', error)
@@ -266,6 +245,20 @@ export function CodeEditor({ problemId }: { problemId: string }) {
       )
 
       setTestResults(results)
+
+      // Save submission result to Supabase
+      const user = await supabase.auth.getUser()
+      if (user.data.user) {
+        const allPassed = results.every((r) => r.passed)
+        await supabase.from('submissions').insert({
+          user_id: user.data.user.id,
+          problem_id: problemId,
+          code,
+          language,
+          status: allPassed ? 'accepted' : 'wrong_answer',
+          score: (results.filter((r) => r.passed).length / results.length) * 100,
+        })
+      }
     } catch (error) {
       console.error("Error running code:", error)
       toast({
@@ -359,7 +352,7 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                   <span>Loading test cases...</span>
                 </div>
               ) : testCases.length > 0 ? (
-                testCases.map((testCase, index) => (
+                testCases.map((testCase) => (
                   <div key={testCase.id} className="space-y-2 border rounded-md p-4">
                     <div>
                       <strong>Input:</strong> {testCase.input}
