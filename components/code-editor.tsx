@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
+import { supabase, type TestCase } from "@/lib/supabase"
 
 // Mock language options
 const languages = [
@@ -18,7 +19,7 @@ const languages = [
   { value: "cpp", label: "C++" },
 ]
 
-// Mock test cases
+/* Mock test cases - kept for reference
 const testCases = [
   {
     input: "nums = [2,7,11,15], target = 9",
@@ -29,6 +30,7 @@ const testCases = [
     expectedOutput: "[1,2]",
   },
 ]
+*/
 
 // Default code templates
 const codeTemplates = {
@@ -66,14 +68,19 @@ const languageIds = {
   cpp: 54,
 }
 
-const createSubmission = async ({ source_code, language_id, stdin, expected_output }) => {
+const createSubmission = async ({ source_code, language_id, stdin, expected_output }: {
+  source_code: string;
+  language_id: number;
+  stdin: string;
+  expected_output: string;
+}) => {
   // Replace with your Judge0 API call to create a submission
   // This example uses a mock delay for demonstration purposes
   await new Promise((resolve) => setTimeout(resolve, 500))
   return Math.random().toString(36).substring(2, 15)
 }
 
-const waitForSubmission = async (token) => {
+const waitForSubmission = async (token: string) => {
   // Replace with your Judge0 API call to get submission results
   // This example uses a mock delay and result for demonstration purposes
   await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -92,8 +99,76 @@ export function CodeEditor({ problemId }: { problemId: string }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [testResults, setTestResults] = useState<any[]>([])
+  const [testCases, setTestCases] = useState<TestCase[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const editorRef = useRef<any>(null)
   const fullscreenRef = useRef<HTMLDivElement>(null)
+
+  // Fetch test cases from Supabase
+  useEffect(() => {
+    const fetchTestCases = async () => {
+      try {
+        const { data: testCases, error } = await supabase
+          .from('test_cases')
+          .select('*')
+          .eq('problem_id', problemId)
+          .eq('is_hidden', false)
+
+        if (error) {
+          throw error
+        }
+
+        setTestCases(testCases)
+      } catch (error) {
+        console.error('Error fetching test cases:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load test cases. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchTestCases()
+  }, [problemId, toast])
+
+  // Save code to Supabase
+  const handleSaveCode = async () => {
+    try {
+      const user = await supabase.auth.getUser()
+      if (!user.data.user) {
+        throw new Error('Not authenticated')
+      }
+
+      const { error } = await supabase
+        .from('submissions')
+        .insert({
+          user_id: user.data.user.id,
+          problem_id: problemId,
+          code,
+          language,
+          status: 'saved',
+        })
+
+      if (error) {
+        throw error
+      }
+
+      toast({
+        title: "Success",
+        description: "Your code has been saved successfully.",
+      })
+    } catch (error) {
+      console.error('Error saving code:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save code. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   // Anti-cheating measures
   useEffect(() => {
@@ -174,7 +249,7 @@ export function CodeEditor({ problemId }: { problemId: string }) {
             source_code: code,
             language_id: languageIds[language as keyof typeof languageIds],
             stdin: testCase.input,
-            expected_output: testCase.expectedOutput,
+            expected_output: testCase.expected_output,
           })
 
           const result = await waitForSubmission(token)
@@ -182,9 +257,9 @@ export function CodeEditor({ problemId }: { problemId: string }) {
           return {
             id: token,
             input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
+            expectedOutput: testCase.expected_output,
             actualOutput: result.stdout?.trim() || "",
-            passed: result.stdout?.trim() === testCase.expectedOutput.trim(),
+            passed: result.stdout?.trim() === testCase.expected_output.trim(),
             error: result.stderr || result.compile_output || "",
           }
         }),
@@ -201,13 +276,6 @@ export function CodeEditor({ problemId }: { problemId: string }) {
     } finally {
       setIsRunning(false)
     }
-  }
-
-  const handleSaveCode = () => {
-    toast({
-      title: "Code Saved",
-      description: "Your code has been saved successfully.",
-    })
   }
 
   const handleEnterFullscreen = () => {
@@ -249,11 +317,26 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                 language={language}
                 value={code}
                 onChange={(value: string) => setCode(value)}
+                theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
                   fontSize: 14,
+                  fontFamily: "monospace",
                   automaticLayout: true,
+                  tabSize: 2,
+                  wordWrap: "on",
+                  lineNumbers: "on",
+                  folding: true,
+                  bracketPairColorization: {
+                    enabled: true
+                  },
+                  formatOnPaste: true,
+                  formatOnType: true,
+                  suggestOnTriggerCharacters: true,
+                  acceptSuggestionOnEnter: "on",
+                  cursorBlinking: "smooth",
+                  cursorSmoothCaretAnimation: "on"
                 }}
               />
             ) : (
@@ -270,16 +353,27 @@ export function CodeEditor({ problemId }: { problemId: string }) {
             </TabsList>
 
             <TabsContent value="testcases" className="mt-4 space-y-4">
-              {testCases.map((testCase, index) => (
-                <div key={index} className="space-y-2 border rounded-md p-4">
-                  <div>
-                    <strong>Input:</strong> {testCase.input}
-                  </div>
-                  <div>
-                    <strong>Expected Output:</strong> {testCase.expectedOutput}
-                  </div>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mr-2" />
+                  <span>Loading test cases...</span>
                 </div>
-              ))}
+              ) : testCases.length > 0 ? (
+                testCases.map((testCase, index) => (
+                  <div key={testCase.id} className="space-y-2 border rounded-md p-4">
+                    <div>
+                      <strong>Input:</strong> {testCase.input}
+                    </div>
+                    <div>
+                      <strong>Expected Output:</strong> {testCase.expected_output}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No test cases available.
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="results" className="mt-4 space-y-4">

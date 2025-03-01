@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
 
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,6 +33,8 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
+      const supabase = createClientComponentClient()
+
       const {
         data: { user },
         error,
@@ -42,6 +44,9 @@ export function LoginForm() {
       })
 
       if (error) throw error
+      if (!user) throw new Error("No user returned after login")
+
+      console.log("Login successful, user:", user.id)
 
       // Get user role from the users table
       const { data: userData, error: userError } = await supabase
@@ -51,18 +56,25 @@ export function LoginForm() {
         .single()
 
       if (userError) throw userError
+      if (!userData) throw new Error("User data not found")
 
-      // Redirect based on role
-      if (userData.role === "creator") {
-        router.push("/creator/dashboard")
-      } else {
-        router.push("/coder/home")
-      }
+      console.log("User role:", userData.role)
 
+      // Show success toast
       toast({
         title: "Login successful",
         description: "Welcome back!",
       })
+
+      // Wait a moment for the session to be set
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Redirect based on role using router.push
+      const targetPath = userData.role === "creator" ? "/creator/dashboard" : "/coder/home"
+      console.log("Redirecting to:", targetPath)
+      router.push(targetPath)
+      router.refresh()
+
     } catch (error: any) {
       toast({
         title: "Login failed",
