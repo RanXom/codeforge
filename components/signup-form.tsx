@@ -6,20 +6,23 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useToast } from "@/components/ui/use-toast"
 
 export function SignupForm() {
   const router = useRouter()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "coder", // Default role
+    role: "coder",
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,20 +39,35 @@ export function SignupForm() {
     setIsLoading(true)
 
     try {
-      // In a real app, you would register with Supabase here
-      // const { data, error } = await supabase.auth.signUp({
-      //   email: formData.email,
-      //   password: formData.password,
-      //   options: {
-      //     data: {
-      //       name: formData.name,
-      //       role: formData.role,
-      //     }
-      //   }
-      // })
+      // Sign up with Supabase Auth
+      const {
+        data: { user },
+        error: signUpError,
+      } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      })
 
-      // For demo purposes, we'll simulate a successful registration
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (signUpError) throw signUpError
+
+      if (!user?.id) throw new Error("User ID not found")
+
+      // Insert user data into the users table
+      const { error: insertError } = await supabase.from("users").insert([
+        {
+          id: user.id,
+          email: formData.email,
+          full_name: formData.name,
+          role: formData.role,
+        },
+      ])
+
+      if (insertError) throw insertError
+
+      toast({
+        title: "Account created",
+        description: "Welcome to CodeForge!",
+      })
 
       // Redirect based on role
       if (formData.role === "creator") {
@@ -57,8 +75,12 @@ export function SignupForm() {
       } else {
         router.push("/coder/home")
       }
-    } catch (error) {
-      console.error("Signup error:", error)
+    } catch (error: any) {
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }

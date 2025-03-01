@@ -58,6 +58,32 @@ public:
 };`,
 }
 
+// Placeholder for Judge0 API functions - replace with actual implementation
+const languageIds = {
+  javascript: 63,
+  python: 71,
+  java: 62,
+  cpp: 54,
+}
+
+const createSubmission = async ({ source_code, language_id, stdin, expected_output }) => {
+  // Replace with your Judge0 API call to create a submission
+  // This example uses a mock delay for demonstration purposes
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  return Math.random().toString(36).substring(2, 15)
+}
+
+const waitForSubmission = async (token) => {
+  // Replace with your Judge0 API call to get submission results
+  // This example uses a mock delay and result for demonstration purposes
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  return {
+    stdout: "[0,1]",
+    stderr: "",
+    compile_output: "",
+  }
+}
+
 export function CodeEditor({ problemId }: { problemId: string }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -141,23 +167,40 @@ export function CodeEditor({ problemId }: { problemId: string }) {
     setIsRunning(true)
     setTestResults([])
 
-    // Simulate code execution
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const results = await Promise.all(
+        testCases.map(async (testCase) => {
+          const token = await createSubmission({
+            source_code: code,
+            language_id: languageIds[language as keyof typeof languageIds],
+            stdin: testCase.input,
+            expected_output: testCase.expectedOutput,
+          })
 
-    // Mock test results
-    const results = testCases.map((testCase, index) => {
-      const passed = Math.random() > 0.3 // Randomly pass or fail for demo
-      return {
-        id: index,
-        input: testCase.input,
-        expectedOutput: testCase.expectedOutput,
-        actualOutput: passed ? testCase.expectedOutput : "[1,0]",
-        passed,
-      }
-    })
+          const result = await waitForSubmission(token)
 
-    setTestResults(results)
-    setIsRunning(false)
+          return {
+            id: token,
+            input: testCase.input,
+            expectedOutput: testCase.expectedOutput,
+            actualOutput: result.stdout?.trim() || "",
+            passed: result.stdout?.trim() === testCase.expectedOutput.trim(),
+            error: result.stderr || result.compile_output || "",
+          }
+        }),
+      )
+
+      setTestResults(results)
+    } catch (error) {
+      console.error("Error running code:", error)
+      toast({
+        title: "Error",
+        description: "Failed to run code. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   const handleSaveCode = () => {
@@ -255,7 +298,7 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                         ) : (
                           <XCircle className="h-5 w-5 text-red-500" />
                         )}
-                        <strong>Test Case {result.id + 1}</strong>
+                        <strong>Test Case {testCases.findIndex((tc) => tc.input === result.input) + 1}</strong>
                       </div>
                       <div>
                         <strong>Input:</strong> {result.input}
@@ -266,6 +309,11 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                       <div>
                         <strong>Your Output:</strong> {result.actualOutput}
                       </div>
+                      {result.error && (
+                        <div>
+                          <strong>Error:</strong> {result.error}
+                        </div>
+                      )}
                     </div>
                   ))}
 

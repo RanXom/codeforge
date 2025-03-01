@@ -1,19 +1,21 @@
 "use client"
 
-import Link from "next/link"
-
 import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
 
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
 
 export function LoginForm() {
   const router = useRouter()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -31,25 +33,42 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      // In a real app, you would authenticate with Supabase here
-      // const { data, error } = await supabase.auth.signInWithPassword({
-      //   email: formData.email,
-      //   password: formData.password,
-      // })
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
 
-      // For demo purposes, we'll simulate a successful login
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (error) throw error
 
-      // Simulate role-based redirect
-      const userRole = formData.email.includes("creator") ? "creator" : "coder"
+      // Get user role from the users table
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single()
 
-      if (userRole === "creator") {
+      if (userError) throw userError
+
+      // Redirect based on role
+      if (userData.role === "creator") {
         router.push("/creator/dashboard")
       } else {
         router.push("/coder/home")
       }
-    } catch (error) {
-      console.error("Login error:", error)
+
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
