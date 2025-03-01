@@ -1,5 +1,7 @@
 "use client"
 
+import { ToastProvider } from "@/components/ui/toast"
+
 import type React from "react"
 
 import { createContext, useContext, useState } from "react"
@@ -17,7 +19,7 @@ type ToastContextType = {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastContextProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<(ToastProps & { id: string })[]>([])
 
   const toast = (props: ToastProps) => {
@@ -54,4 +56,3 @@ export function useToast() {
   }
   return context
 }
-
