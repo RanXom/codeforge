@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
 import { Code, LogOut, User } from "lucide-react"
 
+import { signOut } from "@/lib/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,9 +16,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useToast } from "@/components/ui/use-toast"
 
 export function CoderNavbar() {
+  const router = useRouter()
   const pathname = usePathname()
+  const { toast } = useToast()
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push("/")
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -77,11 +96,11 @@ export function CoderNavbar() {
                 <Link href="/coder/settings">Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/" className="flex items-center gap-2">
+              <DropdownMenuItem onSelect={handleLogout}>
+                <div className="flex items-center gap-2">
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
-                </Link>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
