@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Plus, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -136,7 +136,7 @@ export function ProblemForm() {
               <Textarea
                 id="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                 required
                 placeholder="Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target..."
                 className="min-h-[200px]"
