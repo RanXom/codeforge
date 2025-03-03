@@ -56,28 +56,51 @@ const languageIds = {
   cpp: 54,
 }
 
+
+// Function for handling submission to Judge0
+
 const createSubmission = async ({ source_code, language_id, stdin, expected_output }: {
   source_code: string;
   language_id: number;
   stdin: string;
   expected_output: string;
 }) => {
-  // Replace with your Judge0 API call to create a submission
-  // This example uses a mock delay for demonstration purposes
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  return Math.random().toString(36).substring(2, 15)
-}
+  const response = await fetch("https://judge029.p.rapidapi.com/submissions?base64_encoded=true&wait=false&fields=*",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-RapidAPI-Key": "5cc2e606b7msh73c6b7b4af589abp1f0f7ejsn4061bfb05f7c",
+        "X-RapidAPI-Host": "judge029.p.rapidapi.com",
+      },
+      body: JSON.stringify({
+        source_code,
+        language_id,
+        stdin,
+        expected_output,
+      })
+    });
+    const data = await response.json();
+    return data.token;
+};
 
 const waitForSubmission = async (token: string) => {
-  // Replace with your Judge0 API call to get submission results
-  // This example uses a mock delay and result for demonstration purposes
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-  return {
-    stdout: "[0,1]",
-    stderr: "",
-    compile_output: "",
+  while(true) {
+    const responese = await fetch("https://judge029.p.rapidapi.com/submissions?base64_encoded=true&wait=false&fields=*",{
+      method: "GET",
+      headers: {
+        "X-RapidAPI-Key": "5cc2e606b7msh73c6b7b4af589abp1f0f7ejsn4061bfb05f7c",
+        "X-RapidAPI-Host": "judge029.p.rapidapi.com",
+      }
+    });
+    const data = await responese.json();
+    if (data.status && data.status.id >= 3) {
+      return data;  // Execution Finished
+    }
+
+    await new Promise(resolve => setTimeout(resolve,1000)); // Wait before checking again
   }
-}
+};
 
 export function CodeEditor({ problemId }: { problemId: string }) {
   const router = useRouter()
