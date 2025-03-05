@@ -11,14 +11,51 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase, type TestCase } from "@/lib/supabase"
 import { getProblem } from "@/lib/problems"
+import { version } from "node:process"
 
-// Language options
 const languages = [
   { value: "javascript", label: "JavaScript" },
   { value: "python", label: "Python" },
   { value: "java", label: "Java" },
-  { value: "cpp", label: "C++" },
+  { value: "cpp", label: "C++" }
 ]
+
+// Language Mapping for PistonAPI
+const languageMapping = {
+  javascript: { name: "javascript", version: "18.15.0" },
+  python: { name: "python", version: "3.10.0" },
+  java: { name: "java", version: "15.0.2" },
+  cpp: { name: "cpp", version: "11.0.0" }
+}
+
+// Execute code via PistonAPI
+const executeCode = async (language: String, code: String, input: String) => {
+  try {
+    const response = await fetch("https://emkc.org/api/v2/piston/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        language: languageMapping[language as keyof typeof languageMapping].name,
+        version: languageMapping[language as keyof typeof languageMapping].version,
+        files: [{ name: "main", content: code }],
+        stdin: input,
+        env: {
+          INPUT: input // Passing the input as an env variable
+        }
+      })
+    })
+    if (!response.ok) {
+      throw new Error("Code execution failed")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("PistonAPI Execution Error:", error)
+    return { run: { stdout: "", stderr: error instanceof Error ? error.message : "Unknown error" } }
+  }
+}
 
 // Default code templates
 const codeTemplates = {
@@ -47,60 +84,6 @@ public:
     }
 };`,
 }
-
-// Judge0 API configuration
-const languageIds = {
-  javascript: 63,
-  python: 71,
-  java: 62,
-  cpp: 54,
-}
-
-
-// Function for handling submission to Judge0
-
-const createSubmission = async ({ source_code, language_id, stdin, expected_output }: {
-  source_code: string;
-  language_id: number;
-  stdin: string;
-  expected_output: string;
-}) => {
-  const response = await fetch("https://judge029.p.rapidapi.com/submissions?base64_encoded=true&wait=false&fields=*",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-RapidAPI-Key": "5cc2e606b7msh73c6b7b4af589abp1f0f7ejsn4061bfb05f7c",
-        "X-RapidAPI-Host": "judge029.p.rapidapi.com",
-      },
-      body: JSON.stringify({
-        source_code,
-        language_id,
-        stdin,
-        expected_output,
-      })
-    });
-    const data = await response.json();
-    return data.token;
-};
-
-const waitForSubmission = async (token: string) => {
-  while(true) {
-    const responese = await fetch("https://judge029.p.rapidapi.com/submissions?base64_encoded=true&wait=false&fields=*",{
-      method: "GET",
-      headers: {
-        "X-RapidAPI-Key": "5cc2e606b7msh73c6b7b4af589abp1f0f7ejsn4061bfb05f7c",
-        "X-RapidAPI-Host": "judge029.p.rapidapi.com",
-      }
-    });
-    const data = await responese.json();
-    if (data.status && data.status.id >= 3) {
-      return data;  // Execution Finished
-    }
-
-    await new Promise(resolve => setTimeout(resolve,1000)); // Wait before checking again
-  }
-};
 
 export function CodeEditor({ problemId }: { problemId: string }) {
   const router = useRouter()
@@ -247,22 +230,20 @@ export function CodeEditor({ problemId }: { problemId: string }) {
     try {
       const results = await Promise.all(
         testCases.map(async (testCase) => {
-          const token = await createSubmission({
-            source_code: code,
-            language_id: languageIds[language as keyof typeof languageIds],
-            stdin: testCase.input,
-            expected_output: testCase.expected_output,
-          })
+          const executionResult = await executeCode(language, code, testCase.input)
 
-          const result = await waitForSubmission(token)
+          // Trim and compare Outputs
+          const actualOutput = executionResult.run.stdout?.trim() || ""
+          const expectedOutput = testCase.expected_output.trim()
+          const passed = actualOutput === expectedOutput
 
           return {
-            id: token,
             input: testCase.input,
-            expectedOutput: testCase.expected_output,
-            actualOutput: result.stdout?.trim() || "",
-            passed: result.stdout?.trim() === testCase.expected_output.trim(),
-            error: result.stderr || result.compile_output || "",
+            expectedOutput,
+            actualOutput,
+            passed,
+            error: executionResult.run.stderr || "",
+            compilationError: executionResult.complile ? executionResult.compile.output : ""
           }
         }),
       )
