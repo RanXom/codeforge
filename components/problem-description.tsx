@@ -1,55 +1,64 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
-import { getProblem, type Problem, type TestCase } from "@/lib/problems"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
+import { getProblem, type Problem, type TestCase } from "@/lib/problems";
+import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from "react-markdown";
 
 export function ProblemDescription({ id }: { id: string }) {
-  const [loading, setLoading] = useState(true)
-  const [problem, setProblem] = useState<Problem | null>(null)
-  const [testCases, setTestCases] = useState<TestCase[]>([])
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(true);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProblem = async () => {
       try {
-        setLoading(true)
-        const data = await getProblem(id)
-        setProblem(data.problem)
-        setTestCases(data.testCases)
+        setLoading(true);
+        const data = await getProblem(id);
+        setProblem(data.problem);
+        setTestCases(data.testCases);
       } catch (error) {
-        console.error('Error fetching problem:', error)
+        console.error("Error fetching problem:", error);
         toast({
           title: "Error",
           description: "Failed to load problem details. Please try again.",
           variant: "destructive",
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchProblem()
-  }, [id, toast])
+    fetchProblem();
+  }, [id, toast]);
 
   if (loading) {
     return (
       <Card className="min-h-[500px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </Card>
-    )
+    );
   }
 
   if (!problem) {
     return (
       <Card className="min-h-[500px] flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Problem not found</div>
+        <div className="text-center text-muted-foreground">
+          Problem not found
+        </div>
       </Card>
-    )
+    );
   }
 
   return (
@@ -79,14 +88,17 @@ export function ProblemDescription({ id }: { id: string }) {
 
           <TabsContent value="description" className="mt-4">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+              <ReactMarkdown>{problem.description}</ReactMarkdown>
             </div>
           </TabsContent>
 
           <TabsContent value="examples" className="mt-4 space-y-4">
             {testCases.map((testCase) => (
-              <div key={testCase.id} className="space-y-2 border rounded-md p-4">
-                <div>
+              <div
+                key={testCase.id}
+                className="space-y-2 border rounded-md p-4"
+              >
+                <div className="whitespace-pre-wrap">
                   <strong>Input:</strong> {testCase.input}
                 </div>
                 <div>
@@ -98,7 +110,5 @@ export function ProblemDescription({ id }: { id: string }) {
         </Tabs>
       </CardContent>
     </Card>
-  )
+  );
 }
-
-

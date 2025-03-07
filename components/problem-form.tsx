@@ -1,72 +1,96 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Loader2, Plus, Trash } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import type { Database } from "@/lib/database.types"
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, Plus, Trash } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import type { Database } from "@/lib/database.types";
 
 type TestCase = {
-  input: string
-  expected_output: string
-  is_hidden: boolean
-}
+  input: string;
+  expected_output: string;
+  is_hidden: boolean;
+};
 
 export function ProblemForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("easy")
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
+    "easy",
+  );
   const [testCases, setTestCases] = useState<TestCase[]>([
-    { input: "", expected_output: "", is_hidden: false }
-  ])
+    { input: "", expected_output: "", is_hidden: false },
+  ]);
 
   const addTestCase = () => {
-    setTestCases([...testCases, { input: "", expected_output: "", is_hidden: false }])
-  }
+    setTestCases([
+      ...testCases,
+      { input: "", expected_output: "", is_hidden: false },
+    ]);
+  };
 
   const removeTestCase = (index: number) => {
-    setTestCases(testCases.filter((_, i) => i !== index))
-  }
+    setTestCases(testCases.filter((_, i) => i !== index));
+  };
 
-  const updateTestCase = (index: number, field: keyof TestCase, value: string | boolean) => {
-    const newTestCases = [...testCases]
-    newTestCases[index] = { ...newTestCases[index], [field]: value }
-    setTestCases(newTestCases)
-  }
+  const updateTestCase = (
+    index: number,
+    field: keyof TestCase,
+    value: string | boolean,
+  ) => {
+    const newTestCases = [...testCases];
+    newTestCases[index] = { ...newTestCases[index], [field]: value };
+    setTestCases(newTestCases);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (testCases.length === 0) {
       toast({
         title: "Error",
         description: "Add at least one test case",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setLoading(true)
-      const supabase = createClientComponentClient<Database>()
+      setLoading(true);
+      const supabase = createClientComponentClient<Database>();
 
       // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError) throw userError
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError) throw userError;
 
       // Create the problem
       const { data: problem, error: problemError } = await supabase
-        .from('problems')
+        .from("problems")
         .insert({
           title,
           description,
@@ -74,42 +98,42 @@ export function ProblemForm() {
           created_by: user?.id,
         })
         .select()
-        .single()
+        .single();
 
-      if (problemError) throw problemError
+      if (problemError) throw problemError;
 
       // Create test cases
       const { error: testCasesError } = await supabase
-        .from('test_cases')
+        .from("test_cases")
         .insert(
-          testCases.map(tc => ({
+          testCases.map((tc) => ({
             problem_id: problem.id,
             input: tc.input,
             expected_output: tc.expected_output,
             is_hidden: tc.is_hidden,
-          }))
-        )
+          })),
+        );
 
-      if (testCasesError) throw testCasesError
+      if (testCasesError) throw testCasesError;
 
       toast({
         title: "Success",
         description: "Problem created successfully",
-      })
+      });
 
-      router.push('/creator/problems')
-      router.refresh()
+      router.push("/creator/problems");
+      router.refresh();
     } catch (error) {
-      console.error('Error creating problem:', error)
+      console.error("Error creating problem:", error);
       toast({
         title: "Error",
         description: "Failed to create problem. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -136,7 +160,9 @@ export function ProblemForm() {
               <Textarea
                 id="description"
                 value={description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setDescription(e.target.value)
+                }
                 required
                 placeholder="Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target..."
                 className="min-h-[200px]"
@@ -145,7 +171,12 @@ export function ProblemForm() {
 
             <div className="space-y-2">
               <Label>Difficulty</Label>
-              <Select value={difficulty} onValueChange={(value: "easy" | "medium" | "hard") => setDifficulty(value)}>
+              <Select
+                value={difficulty}
+                onValueChange={(value: "easy" | "medium" | "hard") =>
+                  setDifficulty(value)
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select difficulty" />
                 </SelectTrigger>
@@ -162,7 +193,12 @@ export function ProblemForm() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label>Test Cases</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addTestCase}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTestCase}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Test Case
               </Button>
@@ -173,11 +209,14 @@ export function ProblemForm() {
                 <CardContent className="pt-6 space-y-4">
                   <div className="space-y-2">
                     <Label>Input</Label>
-                    <Input
+                    <Textarea
                       value={testCase.input}
-                      onChange={(e) => updateTestCase(index, "input", e.target.value)}
-                      required
                       placeholder="[2, 7, 11, 15], 9"
+                      required
+                      onChange={(e) =>
+                        updateTestCase(index, "input", e.target.value)
+                      }
+                      className="resize-none"
                     />
                   </div>
 
@@ -185,7 +224,9 @@ export function ProblemForm() {
                     <Label>Expected Output</Label>
                     <Input
                       value={testCase.expected_output}
-                      onChange={(e) => updateTestCase(index, "expected_output", e.target.value)}
+                      onChange={(e) =>
+                        updateTestCase(index, "expected_output", e.target.value)
+                      }
                       required
                       placeholder="[0, 1]"
                     />
@@ -196,7 +237,9 @@ export function ProblemForm() {
                       type="checkbox"
                       id={`hidden-${index}`}
                       checked={testCase.is_hidden}
-                      onChange={(e) => updateTestCase(index, "is_hidden", e.target.checked)}
+                      onChange={(e) =>
+                        updateTestCase(index, "is_hidden", e.target.checked)
+                      }
                     />
                     <Label htmlFor={`hidden-${index}`}>Hidden test case</Label>
                   </div>
@@ -225,5 +268,5 @@ export function ProblemForm() {
         </CardFooter>
       </Card>
     </form>
-  )
-} 
+  );
+}

@@ -1,61 +1,80 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { Play, Save, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Play, Save, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
-import { supabase, type TestCase } from "@/lib/supabase"
-import { getProblem } from "@/lib/problems"
-import { version } from "node:process"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase, type TestCase } from "@/lib/supabase";
+import { getProblem } from "@/lib/problems";
+import { version } from "node:process";
 
 const languages = [
   { value: "javascript", label: "JavaScript" },
   { value: "python", label: "Python" },
   { value: "java", label: "Java" },
-  { value: "cpp", label: "C++" }
-]
+  { value: "cpp", label: "C++" },
+];
 
 // Language Mapping for PistonAPI
 const languageMapping = {
   javascript: { name: "javascript", version: "18.15.0" },
   python: { name: "python", version: "3.10.0" },
   java: { name: "java", version: "15.0.2" },
-  cpp: { name: "cpp", version: "11.0.0" }
-}
+  cpp: { name: "cpp", version: "10.2.0" },
+};
 
 // Execute code via PistonAPI
 const executeCode = async (language: String, code: String, input: String) => {
+  const formattedInput = input.replace(/\s/, "\n");
   try {
+    console.log("Formatted Input:", JSON.stringify(formattedInput, null, 2));
     const response = await fetch("https://emkc.org/api/v2/piston/execute", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        language: languageMapping[language as keyof typeof languageMapping].name,
-        version: languageMapping[language as keyof typeof languageMapping].version,
+        language:
+          languageMapping[language as keyof typeof languageMapping].name,
+        version:
+          languageMapping[language as keyof typeof languageMapping].version,
         files: [{ name: "main", content: code }],
-        stdin: input,
-        env: {
-          INPUT: input // Passing the input as an env variable
-        }
-      })
-    })
+        stdin: formattedInput,
+      }),
+    });
+
     if (!response.ok) {
-      throw new Error("Code execution failed")
+      throw new Error("Code execution failed");
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error("PistonAPI Execution Error:", error)
-    return { run: { stdout: "", stderr: error instanceof Error ? error.message : "Unknown error" } }
+    console.error("PistonAPI Execution Error:", error);
+    return {
+      run: {
+        stdout: "",
+        stderr: error instanceof Error ? error.message : "Unknown error",
+      },
+    };
   }
-}
+};
 
 // Default code templates
 const codeTemplates = {
@@ -83,159 +102,165 @@ public:
         return {0, 0};
     }
 };`,
-}
+};
 
 export function CodeEditor({ problemId }: { problemId: string }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [language, setLanguage] = useState("javascript")
-  const [code, setCode] = useState(codeTemplates.javascript)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isRunning, setIsRunning] = useState(false)
-  const [testResults, setTestResults] = useState<any[]>([])
-  const [testCases, setTestCases] = useState<TestCase[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const editorRef = useRef<any>(null)
-  const fullscreenRef = useRef<HTMLDivElement>(null)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState(codeTemplates.javascript);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [testResults, setTestResults] = useState<any[]>([]);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const editorRef = useRef<any>(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
   // Fetch test cases from Supabase
   useEffect(() => {
     const fetchTestCases = async () => {
       try {
-        const { testCases } = await getProblem(problemId)
-        setTestCases(testCases)
+        const { testCases } = await getProblem(problemId);
+        setTestCases(testCases);
       } catch (error) {
-        console.error('Error fetching test cases:', error)
+        console.error("Error fetching test cases:", error);
         toast({
           title: "Error",
           description: "Failed to load test cases. Please try again.",
           variant: "destructive",
-        })
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchTestCases()
-  }, [problemId, toast])
+    fetchTestCases();
+  }, [problemId, toast]);
 
   // Save code to Supabase
   const handleSaveCode = async () => {
     try {
-      const user = await supabase.auth.getUser()
+      const user = await supabase.auth.getUser();
       if (!user.data.user) {
-        throw new Error('Not authenticated')
+        throw new Error("Not authenticated");
       }
 
-      const { error } = await supabase
-        .from('submissions')
-        .insert({
-          user_id: user.data.user.id,
-          problem_id: problemId,
-          code,
-          language,
-          status: 'saved',
-        })
+      const { error } = await supabase.from("submissions").insert({
+        user_id: user.data.user.id,
+        problem_id: problemId,
+        code,
+        language,
+        status: "saved",
+      });
 
       if (error) {
-        throw error
+        throw error;
       }
 
       toast({
         title: "Success",
         description: "Your code has been saved successfully.",
-      })
+      });
     } catch (error) {
-      console.error('Error saving code:', error)
+      console.error("Error saving code:", error);
       toast({
         title: "Error",
         description: "Failed to save code. Please try again.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   // Anti-cheating measures
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && isFullscreen) {
         // Log tab switch attempt
-        console.log("Tab switch detected")
+        console.log("Tab switch detected");
         toast({
           title: "Warning",
           description: "Tab switching is not allowed during the test.",
           variant: "destructive",
-        })
+        });
       }
-    }
+    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent Escape key from exiting fullscreen
       if (e.key === "Escape" && isFullscreen) {
-        e.preventDefault()
+        e.preventDefault();
       }
 
       // Developer bypass: Ctrl + Shift + X
       if (e.ctrlKey && e.shiftKey && e.key === "X") {
-        setIsFullscreen(false)
+        setIsFullscreen(false);
       }
 
       // Prevent copy-paste
-      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "v") && isFullscreen) {
-        e.preventDefault()
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "c" || e.key === "v") &&
+        isFullscreen
+      ) {
+        e.preventDefault();
         toast({
           title: "Warning",
           description: "Copy-paste is not allowed during the test.",
           variant: "destructive",
-        })
+        });
       }
-    }
+    };
 
     // Prevent right-click context menu
     const handleContextMenu = (e: MouseEvent) => {
       if (isFullscreen) {
-        e.preventDefault()
+        e.preventDefault();
       }
-    }
+    };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    document.addEventListener("keydown", handleKeyDown)
-    document.addEventListener("contextmenu", handleContextMenu)
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("contextmenu", handleContextMenu);
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-      document.removeEventListener("keydown", handleKeyDown)
-      document.removeEventListener("contextmenu", handleContextMenu)
-    }
-  }, [isFullscreen, toast])
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [isFullscreen, toast]);
 
   // Handle language change
   useEffect(() => {
-    setCode(codeTemplates[language as keyof typeof codeTemplates])
-  }, [language])
+    setCode(codeTemplates[language as keyof typeof codeTemplates]);
+  }, [language]);
 
   // Monaco editor setup
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("@monaco-editor/react").then(({ default: MonacoEditor }) => {
-        editorRef.current = MonacoEditor
-      })
+        editorRef.current = MonacoEditor;
+      });
     }
-  }, [])
+  }, []);
 
   const handleRunCode = async () => {
-    setIsRunning(true)
-    setTestResults([])
+    setIsRunning(true);
+    setTestResults([]);
 
     try {
       const results = await Promise.all(
         testCases.map(async (testCase) => {
-          const executionResult = await executeCode(language, code, testCase.input)
-
+          const executionResult = await executeCode(
+            language,
+            code,
+            testCase.input,
+          );
+          console.log("Piston Response:", executionResult);
           // Trim and compare Outputs
-          const actualOutput = executionResult.run.stdout?.trim() || ""
-          const expectedOutput = testCase.expected_output.trim()
-          const passed = actualOutput === expectedOutput
+          const actualOutput = executionResult.run.stdout?.trim() || "";
+          const expectedOutput = testCase.expected_output.trim();
+          const passed = actualOutput === expectedOutput;
 
           return {
             input: testCase.input,
@@ -243,48 +268,51 @@ export function CodeEditor({ problemId }: { problemId: string }) {
             actualOutput,
             passed,
             error: executionResult.run.stderr || "",
-            compilationError: executionResult.complile ? executionResult.compile.output : ""
-          }
+            compilationError: executionResult.compile
+              ? executionResult.compile.output
+              : "",
+          };
         }),
-      )
+      );
 
-      setTestResults(results)
+      setTestResults(results);
 
       // Save submission result to Supabase
-      const user = await supabase.auth.getUser()
+      const user = await supabase.auth.getUser();
       if (user.data.user) {
-        const allPassed = results.every((r) => r.passed)
-        await supabase.from('submissions').insert({
+        const allPassed = results.every((r) => r.passed);
+        await supabase.from("submissions").insert({
           user_id: user.data.user.id,
           problem_id: problemId,
           code,
           language,
-          status: allPassed ? 'accepted' : 'wrong_answer',
-          score: (results.filter((r) => r.passed).length / results.length) * 100,
-        })
+          status: allPassed ? "accepted" : "wrong_answer",
+          score:
+            (results.filter((r) => r.passed).length / results.length) * 100,
+        });
       }
     } catch (error) {
-      console.error("Error running code:", error)
+      console.error("Error running code:", error);
       toast({
         title: "Error",
         description: "Failed to run code. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsRunning(false)
+      setIsRunning(false);
     }
-  }
+  };
 
   const handleEnterFullscreen = () => {
     if (fullscreenRef.current) {
       if (fullscreenRef.current.requestFullscreen) {
-        fullscreenRef.current.requestFullscreen()
-        setIsFullscreen(true)
+        fullscreenRef.current.requestFullscreen();
+        setIsFullscreen(true);
       }
     }
-  }
+  };
 
-  const MonacoEditor = editorRef.current
+  const MonacoEditor = editorRef.current;
 
   return (
     <div ref={fullscreenRef} className="min-h-[500px]">
@@ -326,14 +354,14 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                   lineNumbers: "on",
                   folding: true,
                   bracketPairColorization: {
-                    enabled: true
+                    enabled: true,
                   },
                   formatOnPaste: true,
                   formatOnType: true,
                   suggestOnTriggerCharacters: true,
                   acceptSuggestionOnEnter: "on",
                   cursorBlinking: "smooth",
-                  cursorSmoothCaretAnimation: "on"
+                  cursorSmoothCaretAnimation: "on",
                 }}
               />
             ) : (
@@ -357,12 +385,16 @@ export function CodeEditor({ problemId }: { problemId: string }) {
                 </div>
               ) : testCases.length > 0 ? (
                 testCases.map((testCase) => (
-                  <div key={testCase.id} className="space-y-2 border rounded-md p-4">
+                  <div
+                    key={testCase.id}
+                    className="space-y-2 border rounded-md p-4"
+                  >
                     <div>
                       <strong>Input:</strong> {testCase.input}
                     </div>
                     <div>
-                      <strong>Expected Output:</strong> {testCase.expected_output}
+                      <strong>Expected Output:</strong>{" "}
+                      {testCase.expected_output}
                     </div>
                   </div>
                 ))
@@ -382,20 +414,29 @@ export function CodeEditor({ problemId }: { problemId: string }) {
               ) : testResults.length > 0 ? (
                 <>
                   {testResults.map((result) => (
-                    <div key={result.id} className="space-y-2 border rounded-md p-4">
+                    <div
+                      key={result.id}
+                      className="space-y-2 border rounded-md p-4"
+                    >
                       <div className="flex items-center gap-2">
                         {result.passed ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         ) : (
                           <XCircle className="h-5 w-5 text-red-500" />
                         )}
-                        <strong>Test Case {testCases.findIndex((tc) => tc.input === result.input) + 1}</strong>
+                        <strong>
+                          Test Case{" "}
+                          {testCases.findIndex(
+                            (tc) => tc.input === result.input,
+                          ) + 1}
+                        </strong>
                       </div>
                       <div>
                         <strong>Input:</strong> {result.input}
                       </div>
                       <div>
-                        <strong>Expected Output:</strong> {result.expectedOutput}
+                        <strong>Expected Output:</strong>{" "}
+                        {result.expectedOutput}
                       </div>
                       <div>
                         <strong>Your Output:</strong> {result.actualOutput}
@@ -410,16 +451,21 @@ export function CodeEditor({ problemId }: { problemId: string }) {
 
                   <div className="text-center py-2">
                     {testResults.every((r) => r.passed) ? (
-                      <div className="text-green-500 font-bold">All tests passed!</div>
+                      <div className="text-green-500 font-bold">
+                        All tests passed!
+                      </div>
                     ) : (
                       <div className="text-red-500 font-bold">
-                        {testResults.filter((r) => r.passed).length} of {testResults.length} tests passed
+                        {testResults.filter((r) => r.passed).length} of{" "}
+                        {testResults.length} tests passed
                       </div>
                     )}
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">Run your code to see results.</div>
+                <div className="text-center py-8 text-muted-foreground">
+                  Run your code to see results.
+                </div>
               )}
             </TabsContent>
           </Tabs>
@@ -445,6 +491,5 @@ export function CodeEditor({ problemId }: { problemId: string }) {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
-
